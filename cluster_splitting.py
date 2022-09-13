@@ -127,7 +127,6 @@ def simulation():
                     Z2_p_bar,
                     colors,
                 ):
-                    print("here")
                     print(n)
                     print(x)
                     print(z)
@@ -142,8 +141,8 @@ def simulation():
                     )
                     ax[1].errorbar(
                         [ii * kills_between_clusterings + i],
-                        [x],
-                        yerr=sigma_x,
+                        [x / np.sum(X_p)],
+                        yerr=sigma_x / np.sum(X_p),
                         marker="+",
                         color=color,
                         # s=0.1,
@@ -191,11 +190,11 @@ def simulation():
             )
             ax[0].vlines((ii + 1) * kills_between_clusterings, 0, nlive)
             ax[-1].vlines((ii + 1) * kills_between_clusterings, 0, 1)
-        for a, title in zip(ax, ["n_p", "X_p", "Z_p", "Z"]):
+        for a, title in zip(ax, ["n_p", "X_p/X", "Z_p", "Z"]):
             if "Z" == title:
                 title += f" = {Z:.2E} ± {np.sqrt(Z2_bar - Z_bar**2):.2E}"
             a.set(title=title)
-        ax[1].set(yscale="log")
+        # ax[1].set(yscale="log")
     print(f"Z = {Z} ± {np.sqrt(Z2_bar-Z_bar**2)}")
 
     assert np.isclose(Z, sum(Z_p))
