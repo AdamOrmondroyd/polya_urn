@@ -21,7 +21,7 @@ def kill_errors(
     Z_p_X_p_bar,
 ):
     Z_bar += X_p_bar[p] * L_p[p] / (n_p + 1)
-    Z_p_bar += X_p_bar[p] * L_p[p] / (n_p + 1)
+    Z_p_bar[p] += X_p_bar[p] * L_p[p] / (n_p + 1)
     X_p_bar[p] *= n_p * X_p_bar[p] / (n_p + 1)
     Z2_bar += 2 * Z_X_p_bar[p] * L_p[p] / (n_p + 1) + X_p_X_q_bar[p, p] * L_p[
         p
