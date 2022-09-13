@@ -4,59 +4,11 @@ Doing cluster splitting independently of PolyChord.
 # %%
 import numpy as np
 import matplotlib.pyplot as plt
+from cluster import clustering
+from kill import kill
+
 
 rng = np.random.default_rng()
-
-
-# %%
-## kill lowest liklihood point
-def kill(cluster, Ls, X_p, Z, Z_p):
-    idx = np.argmin(Ls)
-    p = cluster[idx]
-    t = rng.power(sum([q == p for q in cluster]))
-    Z = Z + (1 - t) * X_p[p] * Ls[idx]
-    Z_p[p] = Z_p[p] + (1 - t) * X_p[p] * Ls[idx]
-    X_p[p] = t * X_p[p]
-
-    ## create new live point bugject to constraint
-
-    new_L = 0
-    while new_L <= Ls[idx]:
-        new_L = np.exp(-rng.uniform(-10, 10) ** 2 / 2) / np.sqrt(2 * np.pi) * 20
-    Ls[idx] = new_L
-
-    ## this live point needs to be assigned a cluster proportional to volume
-    cluster[idx] = rng.choice(
-        np.arange(max(cluster) + 1), p=[x / sum(X_p) for x in X_p]
-    )
-
-    ns = [sum([q == r for r in cluster]) for q in np.unique(cluster)]
-    return cluster, Ls, X_p, Z, Z_p, ns
-
-
-## dividing a cluster - let's start with a cluster splitting in two
-
-
-def clustering(cluster, X_p, Z_p):
-    ## choose a cluster at random
-    p = int(rng.random() * max(cluster))
-    ## index of new cluster for safe keeping
-    new_cluster_idx = max(cluster) + 1
-    ## split points into the two clusters 50:50
-    for i in range(len(cluster)):
-        if p == cluster[i]:
-            if rng.random() >= 0.5:
-                # assign to the new cluster
-                cluster[i] = new_cluster_idx
-
-    n_p = sum([q == p for q in cluster])
-    n_new = sum([q == new_cluster_idx for q in cluster])
-    X_0, X_1 = rng.dirichlet([n_p, n_new]) * X_p[p]
-    X_p[p] = X_0
-    X_p.append(X_1)
-    Z_p.append(Z_p[p] * n_new / (n_p + n_new))
-    Z_p[p] *= n_p / (n_p + n_new)
-    return cluster, X_p, Z_p
 
 
 # %%
@@ -64,21 +16,37 @@ def clustering(cluster, X_p, Z_p):
 def initialise():
     nlive = 1000
     cluster = [0] * nlive
-    Ls = list(
+    L_p = list(
         np.exp(-rng.uniform(-10, 10, size=nlive) ** 2 / 2) / np.sqrt(2 * np.pi) * 20
     )
     Z = 0
     Z_p = [Z]
     X = 1
     X_p = [X]
+    X_p_bar = [X]
+    X_p_X_q_bar = np.array([[X**2]])
+    Z_bar = 0
+    Z2_bar = 0
+    Z_p_bar = [0]
+    Z2_p_bar = [0]
+    Z_X_p_bar = [0]
+    Z_p_X_p_bar = [0]
     return (
         nlive,
         cluster,
-        Ls,
+        L_p,
         X,
         X_p,
         Z,
         Z_p,
+        X_p_bar,
+        X_p_X_q_bar,
+        Z_bar,
+        Z2_bar,
+        Z_p_bar,
+        Z2_p_bar,
+        Z_X_p_bar,
+        Z_p_X_p_bar,
     )
 
 
@@ -87,11 +55,19 @@ def simulation():
     (
         nlive,
         cluster,
-        Ls,
+        L_p,
         X,
         X_p,
         Z,
         Z_p,
+        X_p_bar,
+        X_p_X_q_bar,
+        Z_bar,
+        Z2_bar,
+        Z_p_bar,
+        Z2_p_bar,
+        Z_X_p_bar,
+        Z_p_X_p_bar,
     ) = initialise()
 
     fig, ax = plt.subplots(2, 2, figsize=(8, 8))
@@ -105,18 +81,58 @@ def simulation():
         print(ii)
         for i in range(kills_between_clusterings + 1):
             print(i)
-            cluster, Ls, X_p, Z, Z_p, ns = kill(cluster, Ls, X_p, Z, Z_p)
+            (
+                cluster,
+                L_p,
+                X_p,
+                Z,
+                Z_p,
+                X_p_bar,
+                X_p_X_q_bar,
+                Z_bar,
+                Z2_bar,
+                Z_p_bar,
+                Z2_p_bar,
+                Z_X_p_bar,
+                Z_p_X_p_bar,
+                ns,
+            ) = kill(
+                cluster,
+                L_p,
+                X_p,
+                Z,
+                Z_p,
+                X_p_bar,
+                X_p_X_q_bar,
+                Z_bar,
+                Z2_bar,
+                Z_p_bar,
+                Z2_p_bar,
+                Z_X_p_bar,
+                Z_p_X_p_bar,
+            )
 
             # plot every 10
             if 0 == i % 10:
                 print(ns)
                 print(X_p)
                 print(Z_p)
-                for n, x, z, color in zip(ns, X_p, Z_p, colors):
+                for n, x, x_bar, x2_bar, z, z_bar, z2_bar, color in zip(
+                    ns,
+                    X_p,
+                    X_p_bar,
+                    np.diag(X_p_X_q_bar),
+                    Z_p,
+                    Z_p_bar,
+                    Z2_p_bar,
+                    colors,
+                ):
                     print("here")
                     print(n)
                     print(x)
                     print(z)
+                    sigma_x = np.sqrt(x2_bar - x_bar**2)
+                    sigma_z = np.sqrt(z2_bar - z_bar**2)
                     ax[0].scatter(
                         [ii * kills_between_clusterings + i],
                         [n],
@@ -124,23 +140,31 @@ def simulation():
                         color=color,
                         s=0.1,
                     )
-                    ax[1].scatter(
+                    ax[1].errorbar(
                         [ii * kills_between_clusterings + i],
                         [x],
+                        yerr=sigma_x,
                         marker="+",
                         color=color,
-                        s=0.1,
+                        # s=0.1,
                     )
 
-                    ax[2].scatter(
+                    ax[2].errorbar(
                         [ii * kills_between_clusterings + i],
                         [z],
+                        yerr=sigma_z,
                         marker="+",
                         color=color,
-                        s=0.1,
+                        # s=0.1,
                     )
 
-                ax[3].scatter([ii * kills_between_clusterings + i], Z, color="k", s=0.1)
+                ax[3].errorbar(
+                    [ii * kills_between_clusterings + i],
+                    Z,
+                    yerr=np.sqrt(Z2_bar - Z_bar**2),
+                    color="k",
+                    markersize=0.1,
+                )
 
         # don't cluster at the end
         if ii < num_clusterings - 1:
@@ -149,10 +173,12 @@ def simulation():
             ax[-1].vlines((ii + 1) * kills_between_clusterings, 0, 1)
         for a, title in zip(ax, ["n_p", "X_p", "Z_p", "Z"]):
             if "Z" == title:
-                title += f" = {sum(Z_p)}"
+                title += f" = {Z:.2E} ± {np.sqrt(Z2_bar - Z_bar**2):.2E}"
             a.set(title=title)
         ax[1].set(yscale="log")
+    print(f"Z = {Z} ± {np.sqrt(Z2_bar-Z_bar**2)}")
 
+    assert np.isclose(Z, sum(Z_p))
     fig.tight_layout()
     return fig, ax
 
