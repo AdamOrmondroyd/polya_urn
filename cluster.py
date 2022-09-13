@@ -10,8 +10,6 @@ def cluster_errors(
     cluster,
     X_p_bar,
     X_p_X_q_bar,
-    Z_bar,
-    Z2_bar,
     Z_p_bar,
     Z2_p_bar,
     Z_X_p_bar,
@@ -26,9 +24,28 @@ def cluster_errors(
     X_p_X_q_bar[p, -1] = n_p * n_new / (n * (n + 1)) * X_p_X_q_bar[p, p]
     X_p_X_q_bar[-1, p] = X_p_X_q_bar[p, -1]
     X_p_X_q_bar[p, p] *= n_p * (n_p + 1) / (n * (n + 1))
-    X_p_X_q_bar[-1, -1] *= n_new / n
-    for q in np.unique(cluster):
-        pass
+    X_p_X_q_bar[-1, -1] *= n_new * (n_new + 1) / (n * (n + 1))
+
+    Z_X_p_bar.append(Z_X_p_bar[p] * n_new / n)
+    Z_X_p_bar[p] *= n_p / n
+    Z_p_X_p_bar.append(Z_p_X_p_bar[p] * n_new / n)
+    Z_p_X_p_bar[p] *= n_p / n
+    Z_X_p_bar.append(Z_X_p_bar[p] * n_new / n)
+
+    for q in np.unique(cluster)[:-1]:  # omit new cluster
+        if q != p:
+            X_p_X_q_bar[q, -1] = X_p_X_q_bar[q, p] * n_new / n
+            X_p_X_q_bar[-1, q] = X_p_X_q_bar[q, -1]
+            X_p_X_q_bar[q, p] *= n_p / n
+            X_p_X_q_bar[p, q] = X_p_X_q_bar[q, p]
+
+    Z_p_bar.append(Z_p_bar[p] * n_new / n)
+    Z_p_bar[p] *= n_p / n
+    Z_p_X_p_bar.append(Z_p_X_p_bar[p] * n_new * (n_new + 1) / (n * (n + 1)))
+    Z_p_X_p_bar[p] *= n_p * (n_p + 1) / (n * (n + 1))
+    Z2_p_bar.append(Z2_p_bar[p] * n_new * (n_new + 1) / (n * (n + 1)))
+    Z2_p_bar[p] *= n_p * (n_p + 1) / (n * (n + 1))
+    return X_p_bar, X_p_X_q_bar, Z_p_bar, Z2_p_bar, Z_X_p_bar, Z_p_X_p_bar
 
 
 ## dividing a cluster - let's start with a cluster splitting in two
@@ -40,8 +57,6 @@ def clustering(
     Z_p,
     X_p_bar,
     X_p_X_q_bar,
-    Z_bar,
-    Z2_bar,
     Z_p_bar,
     Z2_p_bar,
     Z_X_p_bar,
@@ -66,15 +81,24 @@ def clustering(
     Z_p.append(Z_p[p] * n_new / (n_p + n_new))
     Z_p[p] *= n_p / (n_p + n_new)
 
-    # TODO: calculate errors
+    X_p_bar, X_p_X_q_bar, Z_p_bar, Z2_p_bar, Z_X_p_bar, Z_p_X_p_bar = cluster_errors(
+        p,
+        n_p,
+        n_new,
+        cluster,
+        X_p_bar,
+        X_p_X_q_bar,
+        Z_p_bar,
+        Z2_p_bar,
+        Z_X_p_bar,
+        Z_p_X_p_bar,
+    )
     return (
         cluster,
         X_p,
         Z_p,
         X_p_bar,
         X_p_X_q_bar,
-        Z_bar,
-        Z2_bar,
         Z_p_bar,
         Z2_p_bar,
         Z_X_p_bar,

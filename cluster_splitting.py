@@ -73,8 +73,8 @@ def simulation():
     fig, ax = plt.subplots(2, 2, figsize=(8, 8))
     ax = ax.flatten()
 
-    kills_between_clusterings = 10000
-    num_clusterings = 1
+    kills_between_clusterings = 5000
+    num_clusterings = 2
 
     colors = ["k", "c", "m"]
     for ii in range(num_clusterings):
@@ -168,7 +168,27 @@ def simulation():
 
         # don't cluster at the end
         if ii < num_clusterings - 1:
-            cluster, X_p, Z_p = clustering(cluster, X_p, Z_p)
+            (
+                cluster,
+                X_p,
+                Z_p,
+                X_p_bar,
+                X_p_X_q_bar,
+                Z_p_bar,
+                Z2_p_bar,
+                Z_X_p_bar,
+                Z_p_X_p_bar,
+            ) = clustering(
+                cluster,
+                X_p,
+                Z_p,
+                X_p_bar,
+                X_p_X_q_bar,
+                Z_p_bar,
+                Z2_p_bar,
+                Z_X_p_bar,
+                Z_p_X_p_bar,
+            )
             ax[0].vlines((ii + 1) * kills_between_clusterings, 0, nlive)
             ax[-1].vlines((ii + 1) * kills_between_clusterings, 0, 1)
         for a, title in zip(ax, ["n_p", "X_p", "Z_p", "Z"]):
