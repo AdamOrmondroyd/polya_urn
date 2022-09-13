@@ -73,13 +73,13 @@ def simulation():
     fig, ax = plt.subplots(2, 2, figsize=(8, 8))
     ax = ax.flatten()
 
-    kills_between_clusterings = 5000
-    num_clusterings = 2
+    kills_between_clusterings = [1000, 9000]
 
     colors = ["k", "c", "m"]
-    for ii in range(num_clusterings):
+
+    for ii, kills in enumerate(kills_between_clusterings):
         print(ii)
-        for i in range(kills_between_clusterings + 1):
+        for i in range(kills):
             print(i)
             (
                 cluster,
@@ -133,14 +133,14 @@ def simulation():
                     sigma_x = np.sqrt(x2_bar - x_bar**2)
                     sigma_z = np.sqrt(z2_bar - z_bar**2)
                     ax[0].scatter(
-                        [ii * kills_between_clusterings + i],
+                        [sum(kills_between_clusterings[:ii]) + i],
                         [n],
                         marker="+",
                         color=color,
                         s=0.1,
                     )
                     ax[1].errorbar(
-                        [ii * kills_between_clusterings + i],
+                        [sum(kills_between_clusterings[:ii]) + i],
                         [x / np.sum(X_p)],
                         yerr=sigma_x / np.sum(X_p),
                         marker="+",
@@ -149,7 +149,7 @@ def simulation():
                     )
 
                     ax[2].errorbar(
-                        [ii * kills_between_clusterings + i],
+                        [sum(kills_between_clusterings[:ii]) + i],
                         [z],
                         yerr=sigma_z,
                         marker="+",
@@ -158,15 +158,15 @@ def simulation():
                     )
 
                 ax[3].errorbar(
-                    [ii * kills_between_clusterings + i],
-                    Z,
+                    [sum(kills_between_clusterings[:ii]) + i],
+                    [Z],
                     yerr=np.sqrt(Z2_bar - Z_bar**2),
                     color="k",
-                    markersize=0.1,
+                    # markersize=0.1,
                 )
 
         # don't cluster at the end
-        if ii < num_clusterings - 1:
+        if ii < len(kills_between_clusterings) - 1:
             (
                 cluster,
                 X_p,
@@ -188,8 +188,7 @@ def simulation():
                 Z_X_p_bar,
                 Z_p_X_p_bar,
             )
-            ax[0].vlines((ii + 1) * kills_between_clusterings, 0, nlive)
-            ax[-1].vlines((ii + 1) * kills_between_clusterings, 0, 1)
+            ax[0].vlines(sum(kills_between_clusterings[: ii + 1]), 0, nlive)
         for a, title in zip(ax, ["n_p", "X_p/X", "Z_p", "Z"]):
             if "Z" == title:
                 title += f" = {Z:.2E} ± {np.sqrt(Z2_bar - Z_bar**2):.2E}"
@@ -204,7 +203,7 @@ def simulation():
 
 # %%
 # do 20 simulations
-for i in range(1):
+for i in range(20):
     fig, ax = simulation()
     fig.savefig(f"simulation_{i}.png", dpi=1200)
     plt.close()
