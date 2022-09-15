@@ -113,7 +113,7 @@ def simulation():
             )
 
             # plot every 10
-            if 0 == i % 10:
+            if 0 == i % 100:
                 print(ns)
                 print(X_p)
                 print(Z_p)
@@ -161,6 +161,7 @@ def simulation():
                     [sum(kills_between_clusterings[:ii]) + i],
                     [Z],
                     yerr=np.sqrt(Z2_bar - Z_bar**2),
+                    marker="+",
                     color="k",
                     # markersize=0.1,
                 )
