@@ -145,7 +145,6 @@ def simulation():
                         yerr=sigma_x / np.sum(X_p),
                         marker="+",
                         color=color,
-                        # s=0.1,
                     )
 
                     ax[2].errorbar(
@@ -154,7 +153,6 @@ def simulation():
                         yerr=sigma_z,
                         marker="+",
                         color=color,
-                        # s=0.1,
                     )
 
                 ax[3].errorbar(
@@ -163,7 +161,6 @@ def simulation():
                     yerr=np.sqrt(Z2_bar - Z_bar**2),
                     marker="+",
                     color="k",
-                    # markersize=0.1,
                 )
 
         # don't cluster at the end
@@ -194,7 +191,6 @@ def simulation():
             if "Z" == title:
                 title += f" = {Z:.2E} ± {np.sqrt(Z2_bar - Z_bar**2):.2E}"
             a.set(title=title)
-        # ax[1].set(yscale="log")
     print(f"Z = {Z} ± {np.sqrt(Z2_bar-Z_bar**2)}")
 
     assert np.isclose(Z, sum(Z_p))
