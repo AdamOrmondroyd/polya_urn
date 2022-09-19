@@ -16,9 +16,7 @@ rng = np.random.default_rng()
 def initialise():
     nlive = 1000
     cluster = [0] * nlive
-    L_p = list(
-        np.exp(-rng.uniform(-10, 10, size=nlive) ** 2 / 2) / np.sqrt(2 * np.pi) * 20
-    )
+    L_p = list(np.exp(-rng.uniform(-10, 10, size=nlive) ** 2 / 2) / np.sqrt(2 * np.pi))
     Z = 0
     Z_p = [Z]
     X = 1

@@ -109,7 +109,7 @@ def kill(
 
     new_L = 0
     while new_L <= L_p[idx]:
-        new_L = np.exp(-rng.uniform(-10, 10) ** 2 / 2) / np.sqrt(2 * np.pi) * 20
+        new_L = np.exp(-rng.uniform(-10, 10) ** 2 / 2) / np.sqrt(2 * np.pi)
     L_p[idx] = new_L
 
     ## this live point needs to be assigned a cluster proportional to volume
