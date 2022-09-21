@@ -8,44 +8,63 @@ def cluster_errors(
     n_p,
     n_new,
     cluster,
-    X_p_bar,
-    X_p_X_q_bar,
-    Z_p_bar,
-    Z2_p_bar,
-    Z_X_p_bar,
-    Z_p_X_p_bar,
+    logX_p_bar,
+    logX_p_X_q_bar,
+    logZ_p_bar,
+    logZ2_p_bar,
+    logZ_X_p_bar,
+    logZ_p_X_p_bar,
 ):
     n = n_p + n_new
-    X_p_bar.append(X_p_bar[p] * n_new / n)
-    X_p_bar[p] *= n_p / n
-    X_p_X_q_bar_new = np.zeros((X_p_X_q_bar.shape[0] + 1, X_p_X_q_bar.shape[1] + 1))
-    X_p_X_q_bar_new[:-1, :-1] = X_p_X_q_bar
-    X_p_X_q_bar = X_p_X_q_bar_new
-    X_p_X_q_bar[p, -1] = n_p * n_new / (n * (n + 1)) * X_p_X_q_bar[p, p]
-    X_p_X_q_bar[-1, p] = X_p_X_q_bar[p, -1]
-    X_p_X_q_bar[p, p] *= n_p * (n_p + 1) / (n * (n + 1))
-    X_p_X_q_bar[-1, -1] *= n_new * (n_new + 1) / (n * (n + 1))
+    # C23
+    logX_p_bar.append(logX_p_bar[p] + np.log(n_new / n))
+    logX_p_bar[p] += np.log(n_p / n)
+    # C24/25
+    logX_p_X_q_bar_temp = np.zeros(
+        (logX_p_X_q_bar.shape[0] + 1, logX_p_X_q_bar.shape[1] + 1)
+    )
+    logX_p_X_q_bar_temp[:-1, :-1] = logX_p_X_q_bar
+    logX_p_X_q_bar = logX_p_X_q_bar_temp
+    logX_p_X_q_bar[p, -1] = np.log(n_p * n_new / (n * (n + 1))) + logX_p_X_q_bar[p, p]
+    logX_p_X_q_bar[-1, p] = logX_p_X_q_bar[p, -1]
+    logX_p_X_q_bar[-1, -1] = logX_p_X_q_bar[p, p] + np.log(
+        n_new * (n_new + 1) / (n * (n + 1))
+    )
 
-    Z_X_p_bar.append(Z_X_p_bar[p] * n_new / n)
-    Z_X_p_bar[p] *= n_p / n
-    Z_p_X_p_bar.append(Z_p_X_p_bar[p] * n_new / n)
-    Z_p_X_p_bar[p] *= n_p / n
-    Z_X_p_bar.append(Z_X_p_bar[p] * n_new / n)
+    #### LOOK CAREFULLY AT THIS!!!!!!!!!!!!!!
+
+    logZ_X_p_bar.append(logZ_X_p_bar[p] + np.log(n_new / n))
+    logZ_X_p_bar[p] += np.log(n_p / n)
+    # logZ_p_X_p_bar.append(logZ_p_X_p_bar[p] + np.log(n_new / n))
+    # logZ_p_X_p_bar[p] += np.log(n_p / n)
 
     for q in np.unique(cluster)[:-1]:  # omit new cluster
-        if q != p:
-            X_p_X_q_bar[q, -1] = X_p_X_q_bar[q, p] * n_new / n
-            X_p_X_q_bar[-1, q] = X_p_X_q_bar[q, -1]
-            X_p_X_q_bar[q, p] *= n_p / n
-            X_p_X_q_bar[p, q] = X_p_X_q_bar[q, p]
+        if q != p:  # and omit broken cluster
+            print("don't think I should ever see this with only two clusters")
+            logX_p_X_q_bar[q, -1] = logX_p_X_q_bar[q, p] + np.log(n_new / n)
+            logX_p_X_q_bar[-1, q] = logX_p_X_q_bar[q, -1]
+            logX_p_X_q_bar[q, p] += np.log(n_p / n)
+            logX_p_X_q_bar[p, q] = logX_p_X_q_bar[q, p]
 
-    Z_p_bar.append(Z_p_bar[p] * n_new / n)
-    Z_p_bar[p] *= n_p / n
-    Z_p_X_p_bar.append(Z_p_X_p_bar[p] * n_new * (n_new + 1) / (n * (n + 1)))
-    Z_p_X_p_bar[p] *= n_p * (n_p + 1) / (n * (n + 1))
-    Z2_p_bar.append(Z2_p_bar[p] * n_new * (n_new + 1) / (n * (n + 1)))
-    Z2_p_bar[p] *= n_p * (n_p + 1) / (n * (n + 1))
-    return X_p_bar, X_p_X_q_bar, Z_p_bar, Z2_p_bar, Z_X_p_bar, Z_p_X_p_bar
+    # I think everything which depends on the original XpXp is done
+    logX_p_X_q_bar[p, p] += np.log(n_p * (n_p + 1) / (n * (n + 1)))
+
+    logZ_p_bar.append(logZ_p_bar[p] + np.log(n_new / n))
+    logZ_p_bar[p] += np.log(n_p / n)
+    logZ_p_X_p_bar.append(
+        logZ_p_X_p_bar[p] + np.log(n_new * (n_new + 1) / (n * (n + 1)))
+    )
+    logZ_p_X_p_bar[p] += np.log(n_p * (n_p + 1) / (n * (n + 1)))
+    logZ2_p_bar.append(logZ2_p_bar[p] + np.log(n_new * (n_new + 1) / (n * (n + 1))))
+    logZ2_p_bar[p] += np.log(n_p * (n_p + 1) / (n * (n + 1)))
+    return (
+        logX_p_bar,
+        logX_p_X_q_bar,
+        logZ_p_bar,
+        logZ2_p_bar,
+        logZ_X_p_bar,
+        logZ_p_X_p_bar,
+    )
 
 
 ## dividing a cluster - let's start with a cluster splitting in two
@@ -53,14 +72,14 @@ def cluster_errors(
 
 def clustering(
     cluster,
-    X_p,
-    Z_p,
-    X_p_bar,
-    X_p_X_q_bar,
-    Z_p_bar,
-    Z2_p_bar,
-    Z_X_p_bar,
-    Z_p_X_p_bar,
+    logX_p,
+    logZ_p,
+    logX_p_bar,
+    logX_p_X_q_bar,
+    logZ_p_bar,
+    logZ2_p_bar,
+    logZ_X_p_bar,
+    logZ_p_X_p_bar,
 ):
     ## choose a cluster at random
     p = int(rng.random() * max(cluster))
@@ -75,32 +94,40 @@ def clustering(
 
     n_p = sum([q == p for q in cluster])
     n_new = sum([q == new_cluster_idx for q in cluster])
-    X_0, X_1 = rng.dirichlet([n_p, n_new]) * X_p[p]
-    X_p[p] = X_0
-    X_p.append(X_1)
-    Z_p.append(Z_p[p] * n_new / (n_p + n_new))
-    Z_p[p] *= n_p / (n_p + n_new)
+    # generate fraction of volume to go in each cluster
+    frac_p, frac_new = rng.dirichlet([n_p, n_new])
+    logX_p.append(np.log(frac_new) + logX_p[p])
+    logX_p[p] = np.log(frac_p) + logX_p[p]
+    logZ_p.append(logZ_p[p] + np.log(n_new / (n_p + n_new)))
+    logZ_p[p] += np.log(n_p / (n_p + n_new))
 
-    X_p_bar, X_p_X_q_bar, Z_p_bar, Z2_p_bar, Z_X_p_bar, Z_p_X_p_bar = cluster_errors(
+    (
+        logX_p_bar,
+        logX_p_X_q_bar,
+        logZ_p_bar,
+        logZ2_p_bar,
+        logZ_X_p_bar,
+        logZ_p_X_p_bar,
+    ) = cluster_errors(
         p,
         n_p,
         n_new,
         cluster,
-        X_p_bar,
-        X_p_X_q_bar,
-        Z_p_bar,
-        Z2_p_bar,
-        Z_X_p_bar,
-        Z_p_X_p_bar,
+        logX_p_bar,
+        logX_p_X_q_bar,
+        logZ_p_bar,
+        logZ2_p_bar,
+        logZ_X_p_bar,
+        logZ_p_X_p_bar,
     )
     return (
         cluster,
-        X_p,
-        Z_p,
-        X_p_bar,
-        X_p_X_q_bar,
-        Z_p_bar,
-        Z2_p_bar,
-        Z_X_p_bar,
-        Z_p_X_p_bar,
+        logX_p,
+        logZ_p,
+        logX_p_bar,
+        logX_p_X_q_bar,
+        logZ_p_bar,
+        logZ2_p_bar,
+        logZ_X_p_bar,
+        logZ_p_X_p_bar,
     )

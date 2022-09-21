@@ -3,134 +3,166 @@ Killing live points and propagating errors
 """
 
 import numpy as np
+from scipy.special import logsumexp
 
 rng = np.random.default_rng()
 ## update errors at kill
+log2 = np.log(2)
+
+
 def kill_errors(
     p,
     n_p,
     cluster,
-    L_p,
-    X_p_bar,
-    X_p_X_q_bar,
-    Z_bar,
-    Z2_bar,
-    Z_p_bar,
-    Z2_p_bar,
-    Z_X_p_bar,
-    Z_p_X_p_bar,
+    logL_dead,
+    logX_p_bar,
+    logX_p_X_q_bar,
+    logZ_bar,
+    logZ2_bar,
+    logZ_p_bar,
+    logZ2_p_bar,
+    logZ_X_p_bar,
+    logZ_p_X_p_bar,
 ):
-    Z_bar += X_p_bar[p] * L_p[p] / (n_p + 1)
-    Z_p_bar[p] += X_p_bar[p] * L_p[p] / (n_p + 1)
-    X_p_bar[p] *= n_p * X_p_bar[p] / (n_p + 1)
-    Z2_bar += 2 * Z_X_p_bar[p] * L_p[p] / (n_p + 1) + X_p_X_q_bar[p, p] * L_p[
-        p
-    ] ** 2 / ((n_p + 1) * (n_p + 2))
-    Z2_p_bar[p] += 2 * Z_p_X_p_bar[p] * L_p[p] / (n_p + 1) + 2 * X_p_X_q_bar[
-        p, p
-    ] * L_p[p] ** 2 / ((n_p + 1) * (n_p + 2))
-    Z_X_p_bar[p] = n_p * Z_X_p_bar[p] / (n_p + 1) + n_p * X_p_X_q_bar[p, p] * L_p[
-        p
-    ] ** 2 / ((n_p + 1) * (n_p + 2))
+    # C4
+    logZ_bar = logsumexp([logZ_bar, logX_p_bar[p] + logL_dead - np.log(n_p + 1)])
+    # C5
+    logZ_p_bar[p] = logsumexp(
+        [logZ_p_bar[p], logX_p_bar[p] + logL_dead - np.log(n_p + 1)]
+    )
+    # C14
+    logZ2_bar = logsumexp(
+        [
+            logZ2_bar,
+            log2 + logZ_p_X_p_bar[p] + logL_dead - np.log(n_p + 1),
+            log2 + logX_p_X_q_bar[p, p] + 2 * logL_dead - np.log((n_p + 1) * (n_p + 2)),
+        ]
+    )
+    # C15
+    logZ2_p_bar[p] = logsumexp(
+        [
+            logZ2_p_bar[p],
+            log2 + logZ_p_X_p_bar[p] + logL_dead - np.log(n_p + 1),
+            log2 + logX_p_X_q_bar[p, p] + 2 * logL_dead - np.log((n_p + 1) * (n_p + 2)),
+        ]
+    )
+    # C16
+    logZ_X_p_bar[p] = logsumexp(
+        [
+            np.log(n_p / (n_p + 1)) + logZ_X_p_bar[p],
+            logX_p_X_q_bar[p, p] + logL_dead + np.log(n_p / ((n_p + 1) * (n_p + 2))),
+        ]
+    )
+    # C17
     for q in np.unique(cluster):
         if q != p:
-            Z_X_p_bar[q] += X_p_X_q_bar[p, q] * L_p[p] / (n_p + 1)
-
-    Z_p_X_p_bar[p] = n_p * Z_p_X_p_bar[p] / (n_p + 1) + n_p * X_p_X_q_bar[p, p] * L_p[
-        p
-    ] / ((n_p + 1) * (n_p + 2))
-    X_p_X_q_bar[p, p] *= n_p / (n_p + 2)
+            logZ_X_p_bar[q] = logsumexp(
+                [logZ_X_p_bar[q], logX_p_X_q_bar[p, q] + logL_dead - np.log(n_p + 1)]
+            )
+    # C18
+    logZ_p_X_p_bar[p] = logsumexp(
+        [
+            np.log(n_p / (n_p + 1)) + logZ_p_X_p_bar[p],
+            np.log(n_p / ((n_p + 1) * (n_p + 2))) + logX_p_X_q_bar[p, p] + logL_dead,
+        ]
+    )
+    # C6
+    logX_p_bar[p] += np.log(n_p / (n_p + 1))
+    # C19
+    logX_p_X_q_bar[p, p] += np.log(n_p / (n_p + 2))
+    # C20
     for q in np.unique(cluster):
         if q != p:
-            X_p_X_q_bar[p, q] *= n_p / (n_p + 1)
-            X_p_X_q_bar[q, p] = X_p_X_q_bar[p, q]
+            logX_p_X_q_bar[p, q] += np.log(n_p / (n_p + 1))
+            logX_p_X_q_bar[q, p] = logX_p_X_q_bar[p, q]
 
     return (
-        X_p_bar,
-        X_p_X_q_bar,
-        Z_bar,
-        Z2_bar,
-        Z_p_bar,
-        Z2_p_bar,
-        Z_X_p_bar,
-        Z_p_X_p_bar,
+        logX_p_bar,
+        logX_p_X_q_bar,
+        logZ_bar,
+        logZ2_bar,
+        logZ_p_bar,
+        logZ2_p_bar,
+        logZ_X_p_bar,
+        logZ_p_X_p_bar,
     )
 
 
 ## kill lowest liklihood point
 def kill(
     cluster,
-    L_p,
-    X_p,
-    Z,
-    Z_p,
-    X_p_bar,
-    X_p_X_q_bar,
-    Z_bar,
-    Z_p_bar,
-    Z2_bar,
-    Z2_p_bar,
-    Z_X_p_bar,
-    Z_p_X_p_bar,
+    logLs,
+    logX_p,
+    logZ,
+    logZ_p,
+    logX_p_bar,
+    logX_p_X_q_bar,
+    logZ_bar,
+    logZ_p_bar,
+    logZ2_bar,
+    logZ2_p_bar,
+    logZ_X_p_bar,
+    logZ_p_X_p_bar,
 ):
-    idx = np.argmin(L_p)
+    idx = np.argmin(logLs)
     p = cluster[idx]
     t = rng.power(sum([q == p for q in cluster]))
-    Z = Z + (1 - t) * X_p[p] * L_p[idx]
-    Z_p[p] = Z_p[p] + (1 - t) * X_p[p] * L_p[idx]
-    X_p[p] = t * X_p[p]
+    logZ = logsumexp([logZ, np.log(1 - t) + logX_p[p] + logLs[idx]])
+    logZ_p[p] = logsumexp([logZ_p[p], np.log(1 - t) + logX_p[p] + logLs[idx]])
+    logX_p[p] += np.log(t)
 
     n_p = sum([q == p for q in cluster])
     (
-        X_p_bar,
-        X_p_X_q_bar,
-        Z_bar,
-        Z2_bar,
-        Z_p_bar,
-        Z2_p_bar,
-        Z_X_p_bar,
-        Z_p_X_p_bar,
+        logX_p_bar,
+        logX_p_X_q_bar,
+        logZ_bar,
+        logZ2_bar,
+        logZ_p_bar,
+        logZ2_p_bar,
+        logZ_X_p_bar,
+        logZ_p_X_p_bar,
     ) = kill_errors(
         p,
         n_p,
         cluster,
-        L_p,
-        X_p_bar,
-        X_p_X_q_bar,
-        Z_bar,
-        Z_p_bar,
-        Z2_bar,
-        Z2_p_bar,
-        Z_X_p_bar,
-        Z_p_X_p_bar,
+        logLs[idx],
+        logX_p_bar,
+        logX_p_X_q_bar,
+        logZ_bar,
+        logZ_p_bar,
+        logZ2_bar,
+        logZ2_p_bar,
+        logZ_X_p_bar,
+        logZ_p_X_p_bar,
     )
 
     ## create new live point bugject to constraint
 
-    new_L = 0
-    while new_L <= L_p[idx]:
-        new_L = np.exp(-rng.uniform(-10, 10) ** 2 / 2) / np.sqrt(2 * np.pi)
-    L_p[idx] = new_L
+    new_L = -np.inf
+    while new_L <= logLs[idx]:
+        new_L = -rng.uniform(-10, 10) ** 2 / 2 - np.log(2 * np.pi) / 2
+    logLs[idx] = new_L
 
     ## this live point needs to be assigned a cluster proportional to volume
     cluster[idx] = rng.choice(
-        np.arange(max(cluster) + 1), p=[x / sum(X_p) for x in X_p]
+        np.arange(max(cluster) + 1),
+        p=[x / np.exp(logsumexp(logX_p)) for x in np.exp(logX_p)],
     )
 
     ns = [sum([q == r for r in cluster]) for q in np.unique(cluster)]
     return (
         cluster,
-        L_p,
-        X_p,
-        Z,
-        Z_p,
-        X_p_bar,
-        X_p_X_q_bar,
-        Z_bar,
-        Z2_bar,
-        Z_p_bar,
-        Z2_p_bar,
-        Z_X_p_bar,
-        Z_p_X_p_bar,
+        logLs,
+        logX_p,
+        logZ,
+        logZ_p,
+        logX_p_bar,
+        logX_p_X_q_bar,
+        logZ_bar,
+        logZ2_bar,
+        logZ_p_bar,
+        logZ2_p_bar,
+        logZ_X_p_bar,
+        logZ_p_X_p_bar,
         ns,
     )
