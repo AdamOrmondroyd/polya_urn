@@ -33,9 +33,9 @@ def simulation(kills_between_clusterings):
                 for i, (n, x, sigma_x, z, sigma_z, color) in enumerate(
                     zip(
                         rti.ns,
-                        rti.logX_p,
+                        rti.logX_p_bar,
                         rti.sigma_X_p,
-                        rti.logZ_p,
+                        rti.logZ_p_bar,
                         rti.sigma_Z_p,
                         colors,
                     )
@@ -68,20 +68,20 @@ def simulation(kills_between_clusterings):
 
                 ax[3].errorbar(
                     [sum(kills_between_clusterings[:iii]) + ii],
-                    [np.exp(rti.logZ)],
+                    [np.exp(rti.logZ_bar)],
                     yerr=rti.sigma_Z,
                     marker="+",
                     color="k",
                 )
 
-            print(f"Z = {np.exp(rti.logZ)} ± {rti.sigma_Z}")
+            print(f"Z = {np.exp(rti.logZ_bar)} ± {rti.sigma_Z}")
 
         # don't cluster at the end
         if iii < len(kills_between_clusterings) - 1:
             print("clustering")
             rti.clustering()
             print(
-                f"Z = {np.exp(rti.logZ)} ± {np.sqrt(np.exp(rti.logZ2_bar) - np.exp(rti.logZ_bar)**2)}"
+                f"Z = {np.exp(rti.logZ_bar)} ± {np.sqrt(np.exp(rti.logZ2_bar) - np.exp(rti.logZ_bar)**2)}"
             )
             for iii, (Zi, sigma_Z_i) in enumerate(
                 zip(np.exp(rti.logZ_p), rti.sigma_Z_p)
@@ -91,12 +91,13 @@ def simulation(kills_between_clusterings):
 
     for a, title in zip(ax, ["n_p", "X_p/X", "Z_p", "Z"]):
         if "Z" == title:
-            title += f" = {np.exp(rti.logZ):.2E} ± {rti.sigma_Z:.2E}"
+            title += f" = {np.exp(rti.logZ_bar):.2E} ± {rti.sigma_Z:.2E}"
         a.set(title=title)
 
     print(
-        f"Z = {np.exp(rti.logZ)} ± {np.sqrt(np.exp(rti.logZ2_bar) - np.exp(rti.logZ_bar)**2)}"
+        f"Z = {np.exp(rti.logZ_bar)} ± {np.sqrt(np.exp(rti.logZ2_bar) - np.exp(rti.logZ_bar)**2)}"
     )
+    print(f"logZ = {rti.logZ_bar} ± {rti.logZ2_bar - 2 * rti.logZ_bar}")
 
     assert np.isclose(rti.logZ, logsumexp(rti.logZ_p))
     fig.tight_layout()
